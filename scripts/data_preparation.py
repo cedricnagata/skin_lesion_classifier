@@ -28,6 +28,11 @@ def preprocess_features(df, preprocessor=None):
         ])
         # Fitting the preprocessor
         preprocessor.fit(features)
+
+        """ diagnosis_mapping = preprocessor.named_transformers_['cat'].categories_[1]
+        print("Diagnosis Mappings:")
+        for idx, diag in enumerate(diagnosis_mapping):
+            print(f"{diag}: {idx}") """
     
     # Applying the transformations
     features_preprocessed = preprocessor.transform(features)

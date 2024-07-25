@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 from data_preparation import prepare_data_splits
 
 # Paths to image directories and metadata file
-metadata_path = 'C:/Users/thece/Documents/Employment/Projects/DERM DX/data/metadata.csv'
+metadata_path = 'C:/Users/thece/Documents/Software Projects/DERM DX/data/metadata.csv'
 image_folder_paths = {
-    'train': ['C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/benign/train', 
-              'C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/malignant/train'],
-    'val': ['C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/benign/val', 
-            'C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/malignant/val'],
-    'test': ['C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/benign/test', 
-             'C:/Users/thece/Documents/Employment/Projects/DERM DX/data/images/training/malignant/test']
+    'train': ['C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/benign/train', 
+              'C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/malignant/train'],
+    'val': ['C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/benign/val', 
+            'C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/malignant/val'],
+    'test': ['C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/benign/test', 
+             'C:/Users/thece/Documents/Software Projects/DERM DX/data/images/training/malignant/test']
 }
 
 data_splits, _ = prepare_data_splits(metadata_path, image_folder_paths)

@@ -8,20 +8,8 @@ import gdown
 
 app = Flask(__name__)
 
-# URL of the shared Google Drive files
-#MODEL_2_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
 MODEL_2_PATH = 'model_2.tflite'
-#MODEL_34_URL = 'https://drive.google.com/uc?id=1WyaO0boMXI-2IPU0bLsdRlUelkSBlDH6'
 MODEL_34_PATH = 'model_34.tflite'
-
-"""
-def download_model():
-    if not os.path.exists(MODEL_2_PATH):
-        gdown.download(MODEL_2_URL, MODEL_2_PATH, quiet=False)
-
-# Download the model
-download_model()
-"""
 
 """
 KERAS VERSION
@@ -80,7 +68,7 @@ PREDICTION_MAPPING = {
 
 def preprocess_image(image):
     image = image.resize((224, 224))
-    image = np.array(image).astype('float32')
+    image = np.array(image).astype('float32') / 255.0
     image = np.expand_dims(image, axis=0)
     return image
 
@@ -151,6 +139,8 @@ def predict():
             'prediction': PREDICTION_MAPPING[predicted_class],  # Map prediction to class name
             'confidence': float(prediction_confidence)
         })
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

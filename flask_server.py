@@ -9,7 +9,7 @@ import gdown
 app = Flask(__name__)
 
 # URL of the shared Google Drive file
-MODEL_URL = 'https://drive.google.com/file/d/12GXJps5hBjnc7WDjtiCYtbP2tDyfdCQt'
+MODEL_URL = 'https://drive.google.com/uc?id=12GXJps5hBjnc7WDjtiCYtbP2tDyfdCQt'
 MODEL_PATH = 'best_model.keras'
 
 def download_model():

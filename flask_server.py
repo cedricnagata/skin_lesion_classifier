@@ -19,8 +19,20 @@ def download_model():
 # Download the model
 download_model()
 
+"""
+KERAS VERSION
 # Load your trained model
-model = tf.keras.models.load_model(MODEL_PATH)
+# model = tf.keras.models.load_model(MODEL_PATH)
+"""
+
+# ****TFLITE VERSION****
+# Load the TensorFlow Lite model
+interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+# ****TFLITE VERSION****
 
 """
 DIAGNOSIS_MAPPING = {
@@ -69,23 +81,13 @@ PREDICTION_MAPPING = {
 
 def preprocess_image(image):
     image = image.resize((224, 224))
-    image = np.array(image).astype('float32') / 255.0
+    image = np.array(image).astype('float') / 255.0
     image = np.expand_dims(image, axis=0)
     return image
 
 def preprocess_tabular_data(age, sex, diagnosis):
     age = float(age)
     sex = 1 if sex == 'male' else 0  # Example encoding: male=1, female=0
-
-    """
-    diagnosis = DIAGNOSIS_MAPPING.get(diagnosis, DIAGNOSIS_MAPPING[DEFAULT_DIAGNOSIS])  # Map the diagnosis string to a numeric value
-    
-    # Assuming the model expects 34 features
-    features = np.zeros((34,))  # Create a zero array of shape (34,)
-    features[:3] = [age, sex, diagnosis]  # Set the first three features with age, sex, and diagnosis
-    features = np.expand_dims(features, axis=0)  # Add batch dimension
-    """ 
-
     features = np.array([[age, sex]])  # Create an array with shape (1, 2)
     return features
 
@@ -108,12 +110,22 @@ def predict():
         # Preprocess tabular data
         age = request.form['age']
         sex = request.form['sex']
-        # diagnosis = request.form.get('diagnosis', DEFAULT_DIAGNOSIS)
-        # tabular_data = preprocess_tabular_data(age, sex, diagnosis)
         tabular_data = preprocess_tabular_data(age, sex)
 
+        """
+        KERAS VERSION
         # Perform prediction
         predictions = model.predict([image, tabular_data])
+        """
+
+        # ****TFLITE VERSION****
+        # Set the tensor for the image
+        interpreter.set_tensor(input_details[0]['index'], image)
+        interpreter.set_tensor(input_details[1]['index'], tabular_data)
+        interpreter.invoke()
+        predictions = interpreter.get_tensor(output_details[0]['index'])
+        # ****TFLITE VERSION****
+
         predicted_class = np.argmax(predictions, axis=1)[0]
         prediction_confidence = predictions[0][predicted_class]
 

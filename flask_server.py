@@ -9,7 +9,7 @@ import gdown
 app = Flask(__name__)
 
 # URL of the shared Google Drive file
-MODEL_URL = 'https://drive.google.com/uc?id=12GXJps5hBjnc7WDjtiCYtbP2tDyfdCQt'
+MODEL_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
 MODEL_PATH = 'model.tflite'
 
 def download_model():

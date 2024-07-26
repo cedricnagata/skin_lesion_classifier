@@ -9,17 +9,19 @@ import gdown
 app = Flask(__name__)
 
 # URL of the shared Google Drive files
-MODEL_2_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
+#MODEL_2_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
 MODEL_2_PATH = 'model_2.tflite'
-MODEL_34_URL = 'https://drive.google.com/uc?id=1WyaO0boMXI-2IPU0bLsdRlUelkSBlDH6'
+#MODEL_34_URL = 'https://drive.google.com/uc?id=1WyaO0boMXI-2IPU0bLsdRlUelkSBlDH6'
 MODEL_34_PATH = 'model_34.tflite'
 
+"""
 def download_model():
     if not os.path.exists(MODEL_2_PATH):
         gdown.download(MODEL_2_URL, MODEL_2_PATH, quiet=False)
 
 # Download the model
 download_model()
+"""
 
 """
 KERAS VERSION
@@ -28,15 +30,14 @@ KERAS VERSION
 """
 
 # ****TFLITE VERSION****
-# Load the TensorFlow Lite model
-interpreter = tf.lite.Interpreter(model_path='model_2.tflite')
-interpreter.allocate_tensors()
+# Load TFLite models
+interpreter_without_diagnosis = tf.lite.Interpreter(model_path=MODEL_2_PATH)
+interpreter_with_diagnosis = tf.lite.Interpreter(model_path=MODEL_34_PATH)
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+interpreter_without_diagnosis.allocate_tensors()
+interpreter_with_diagnosis.allocate_tensors()
 # ****TFLITE VERSION****
 
-"""
 DIAGNOSIS_MAPPING = {
     'AIMP': 0,
     'acrochordon': 1,
@@ -71,10 +72,6 @@ DIAGNOSIS_MAPPING = {
     'verruca': 30,
 }
 
-# Define a default diagnosis
-DEFAULT_DIAGNOSIS = 'nevus'
-"""
-
 # Define the mapping for predictions
 PREDICTION_MAPPING = {
     0: 'benign',
@@ -83,21 +80,27 @@ PREDICTION_MAPPING = {
 
 def preprocess_image(image):
     image = image.resize((224, 224))
-    image = np.array(image).astype('float32') / 255.0
+    image = np.array(image).astype('float32')
     image = np.expand_dims(image, axis=0)
     return image
 
-def preprocess_tabular_data(age, sex):
-    age = np.array([float(age)], dtype=np.float32).reshape(1, -1)
-
+def preprocess_tabular_data(age, sex, diagnosis=None):
+    age = np.array([float(age)], dtype=np.float32).reshape(1, 1)
     if sex == 'male':
         sex = np.array([[1, 0]], dtype=np.float32)
     elif sex == 'female':
         sex = np.array([[0, 1]], dtype=np.float32)
     else:
         raise ValueError('Sex must be "male" or "female"')
-    
-    features = np.concatenate((age, sex), axis=1)
+
+    if diagnosis and diagnosis in DIAGNOSIS_MAPPING:
+        diagnosis_encoded = DIAGNOSIS_MAPPING[diagnosis]
+        one_hot_diagnosis = np.zeros((1, len(DIAGNOSIS_MAPPING)), dtype=np.float32)
+        one_hot_diagnosis[0, diagnosis_encoded] = 1.0
+        features = np.concatenate((age, sex, one_hot_diagnosis), axis=1)
+    else:
+        features = np.concatenate((age, sex), axis=1)
+
     return features
 
 @app.route('/predict', methods=['POST'])
@@ -119,22 +122,28 @@ def predict():
         # Preprocess tabular data
         age = request.form['age']
         sex = request.form['sex']
-        tabular_data = preprocess_tabular_data(age, sex)
+        diagnosis = request.form.get('diagnosis')
 
-        """
-        KERAS VERSION
-        # Perform prediction
-        predictions = model.predict([image, tabular_data])
-        """
+        if diagnosis and diagnosis in DIAGNOSIS_MAPPING:
+            interpreter = interpreter_with_diagnosis
+            tabular_data = preprocess_tabular_data(age, sex, diagnosis)
+        else:
+            interpreter = interpreter_without_diagnosis
+            tabular_data = preprocess_tabular_data(age, sex)
 
-        # ****TFLITE VERSION****
-        # Set the tensor for the image
+        # Prepare input details
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        # Set input tensor
         interpreter.set_tensor(input_details[0]['index'], image)
         interpreter.set_tensor(input_details[1]['index'], tabular_data)
-        interpreter.invoke()
-        predictions = interpreter.get_tensor(output_details[0]['index'])
-        # ****TFLITE VERSION****
 
+        # Run inference
+        interpreter.invoke()
+
+        # Get predictions
+        predictions = interpreter.get_tensor(output_details[0]['index'])
         predicted_class = np.argmax(predictions, axis=1)[0]
         prediction_confidence = predictions[0][predicted_class]
 

@@ -8,13 +8,15 @@ import gdown
 
 app = Flask(__name__)
 
-# URL of the shared Google Drive file
-MODEL_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
-MODEL_PATH = 'model.tflite'
+# URL of the shared Google Drive files
+MODEL_2_URL = 'https://drive.google.com/uc?id=14vdMeLs6QDNHrYtkrwU3NgNjdm-oVQMJ'
+MODEL_2_PATH = 'model_2.tflite'
+MODEL_34_URL = 'https://drive.google.com/uc?id=1WyaO0boMXI-2IPU0bLsdRlUelkSBlDH6'
+MODEL_34_PATH = 'model_34.tflite'
 
 def download_model():
-    if not os.path.exists(MODEL_PATH):
-        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+    if not os.path.exists(MODEL_2_PATH):
+        gdown.download(MODEL_2_URL, MODEL_2_PATH, quiet=False)
 
 # Download the model
 download_model()
@@ -27,7 +29,7 @@ KERAS VERSION
 
 # ****TFLITE VERSION****
 # Load the TensorFlow Lite model
-interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+interpreter = tf.lite.Interpreter(model_path='model_2.tflite')
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
@@ -81,14 +83,21 @@ PREDICTION_MAPPING = {
 
 def preprocess_image(image):
     image = image.resize((224, 224))
-    image = np.array(image).astype('float') / 255.0
+    image = np.array(image).astype('float32') / 255.0
     image = np.expand_dims(image, axis=0)
     return image
 
-def preprocess_tabular_data(age, sex, diagnosis):
-    age = float(age)
-    sex = 1 if sex == 'male' else 0  # Example encoding: male=1, female=0
-    features = np.array([[age, sex]])  # Create an array with shape (1, 2)
+def preprocess_tabular_data(age, sex):
+    age = np.array([float(age)], dtype=np.float32).reshape(1, -1)
+
+    if sex == 'male':
+        sex = np.array([[1, 0]], dtype=np.float32)
+    elif sex == 'female':
+        sex = np.array([[0, 1]], dtype=np.float32)
+    else:
+        raise ValueError('Sex must be "male" or "female"')
+    
+    features = np.concatenate((age, sex), axis=1)
     return features
 
 @app.route('/predict', methods=['POST'])

@@ -3,8 +3,21 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
+import os
+import gdown
 
 app = Flask(__name__)
+
+# URL of the shared Google Drive file
+MODEL_URL = 'https://drive.google.com/file/d/12GXJps5hBjnc7WDjtiCYtbP2tDyfdCQt/view?usp=drive_link'
+MODEL_PATH = 'best_model.keras'
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+
+# Download the model
+download_model()
 
 # Load your trained model
 model = tf.keras.models.load_model('best_model.keras')

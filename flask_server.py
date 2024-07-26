@@ -20,7 +20,7 @@ def download_model():
 download_model()
 
 # Load your trained model
-model = tf.keras.models.load_model('best_model.keras')
+model = tf.keras.models.load_model(MODEL_PATH)
 
 DIAGNOSIS_MAPPING = {
     'AIMP': 0,

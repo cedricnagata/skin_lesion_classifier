@@ -18,21 +18,16 @@ def get_isic_ids_from_folders(folders):
     return ids
 
 def preprocess_features(df, preprocessor=None):
-    features = df[['sex', 'age_approx', 'diagnosis']]
+    features = df[['sex', 'age_approx']]
     
     if preprocessor is None:
         # Define preprocessing for categorical and numerical columns
         preprocessor = ColumnTransformer(transformers=[
             ('num', StandardScaler(), ['age_approx']),
-            ('cat', OneHotEncoder(handle_unknown='ignore'), ['sex', 'diagnosis']),
+            ('cat', OneHotEncoder(handle_unknown='ignore'), ['sex']),
         ])
         # Fitting the preprocessor
         preprocessor.fit(features)
-
-        """ diagnosis_mapping = preprocessor.named_transformers_['cat'].categories_[1]
-        print("Diagnosis Mappings:")
-        for idx, diag in enumerate(diagnosis_mapping):
-            print(f"{diag}: {idx}") """
     
     # Applying the transformations
     features_preprocessed = preprocessor.transform(features)

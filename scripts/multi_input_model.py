@@ -13,13 +13,13 @@ def create_image_branch(input_shape=(224, 224, 3)):
     x = Dropout(0.5)(x)
     return inputs, x
 
-def create_tabular_branch(input_shape=(34,)):  # Adjust the number of tabular features if necessary
+def create_tabular_branch(input_shape=(3,)):  # Adjust the number of tabular features if necessary
     inputs = Input(shape=input_shape)
     x = Dense(64, activation='relu')(inputs)
     x = Dropout(0.5)(x)
     return inputs, x
 
-def create_multi_input_model(image_input_shape=(224, 224, 3), tabular_input_shape=(34,)):
+def create_multi_input_model(image_input_shape=(224, 224, 3), tabular_input_shape=(3,)):
     image_inputs, image_branch = create_image_branch(image_input_shape)
     tabular_inputs, tabular_branch = create_tabular_branch(tabular_input_shape)
     concatenated = concatenate([image_branch, tabular_branch])

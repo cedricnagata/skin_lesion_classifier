@@ -1,28 +1,26 @@
 from flask import Flask, request, jsonify
+import pandas as pd
 import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
 
 app = Flask(__name__)
 
-MODEL_2_PATH = 'model_2.tflite'
-MODEL_34_PATH = 'model_34.tflite'
+TFLITE = False
 
-"""
-KERAS VERSION
-# Load your trained model
-# model = tf.keras.models.load_model(MODEL_PATH)
-"""
-
-# ****TFLITE VERSION****
-# Load TFLite models
-interpreter_without_diagnosis = tf.lite.Interpreter(model_path=MODEL_2_PATH)
-interpreter_with_diagnosis = tf.lite.Interpreter(model_path=MODEL_34_PATH)
-
-interpreter_without_diagnosis.allocate_tensors()
-interpreter_with_diagnosis.allocate_tensors()
-# ****TFLITE VERSION****
+if TFLITE:
+    # Load the TFLite models
+    interpreter_3_features = tf.lite.Interpreter(model_path="model_2.tflite")
+    interpreter_34_features = tf.lite.Interpreter(model_path="model_34.tflite")
+    interpreter_3_features.allocate_tensors()
+    interpreter_34_features.allocate_tensors()
+else:
+    # Load the Keras models
+    model_3_features = tf.keras.models.load_model('model_2.keras')
+    model_34_features = tf.keras.models.load_model('model_34.keras')
 
 DIAGNOSIS_MAPPING = {
     'AIMP': 0,
@@ -71,23 +69,41 @@ def preprocess_image(image):
     return image
 
 def preprocess_tabular_data(age, sex, diagnosis=None):
-    age = np.array([float(age)], dtype=np.float32).reshape(1, 1)
-    if sex == 'male':
-        sex = np.array([[1, 0]], dtype=np.float32)
-    elif sex == 'female':
-        sex = np.array([[0, 1]], dtype=np.float32)
+    if diagnosis:
+        preprocessor_34_features = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), ['age_approx']),
+                ('cat', OneHotEncoder(
+                    categories=[['male', 'female'], list(DIAGNOSIS_MAPPING.keys())], 
+                    sparse_output=False), ['sex', 'diagnosis']),
+            ]
+        )
+        preprocessor_34_features.fit(pd.DataFrame({
+            'age_approx': [0],
+            'sex': ['male'],
+            'diagnosis': ['AIMP']
+        }))
+        data = pd.DataFrame({'age_approx': [float(age)], 'sex': [sex.lower()], 'diagnosis': [diagnosis]})
+        features_preprocessed = preprocessor_34_features.transform(data)
     else:
-        raise ValueError('Sex must be "male" or "female"')
+        preprocessor_3_features = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), ['age_approx']),
+                ('cat', OneHotEncoder(
+                    categories=[['male', 'female']], 
+                    sparse_output=False), ['sex']),
+            ]
+        )
+        preprocessor_3_features.fit(pd.DataFrame({
+            'age_approx': [0],
+            'sex': ['male']
+        }))
+        data = pd.DataFrame({'age_approx': [float(age)], 'sex': [sex.lower()]})
+        features_preprocessed = preprocessor_3_features.transform(data)
+    
+    features_preprocessed = features_preprocessed.flatten().reshape(1, -1).astype('float32')
+    return features_preprocessed
 
-    if diagnosis and diagnosis in DIAGNOSIS_MAPPING:
-        diagnosis_encoded = DIAGNOSIS_MAPPING[diagnosis]
-        one_hot_diagnosis = np.zeros((1, len(DIAGNOSIS_MAPPING)), dtype=np.float32)
-        one_hot_diagnosis[0, diagnosis_encoded] = 1.0
-        features = np.concatenate((age, sex, one_hot_diagnosis), axis=1)
-    else:
-        features = np.concatenate((age, sex), axis=1)
-
-    return features
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -111,31 +127,36 @@ def predict():
         diagnosis = request.form.get('diagnosis')
 
         if diagnosis and diagnosis in DIAGNOSIS_MAPPING:
-            interpreter = interpreter_with_diagnosis
+            model = interpreter_34_features if TFLITE else model_34_features
             tabular_data = preprocess_tabular_data(age, sex, diagnosis)
         else:
-            interpreter = interpreter_without_diagnosis
+            model = interpreter_3_features if TFLITE else model_3_features
             tabular_data = preprocess_tabular_data(age, sex)
 
-        # Prepare input details
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
+        if TFLITE:
+            # Prepare input details
+            input_details = model.get_input_details()
 
-        # Set input tensor
-        interpreter.set_tensor(input_details[0]['index'], image)
-        interpreter.set_tensor(input_details[1]['index'], tabular_data)
+            # Set input tensor
+            model.set_tensor(input_details[0]['index'], image.astype(np.float32))
+            model.set_tensor(input_details[1]['index'], tabular_data.astype(np.float32))
+            model.invoke()
 
-        # Run inference
-        interpreter.invoke()
+            # Get predictions
+            output_details = model.get_output_details()
+            predictions = model.get_tensor(output_details[0]['index'])
+        else:
+            predictions = model.predict([image, tabular_data])
 
-        # Get predictions
-        predictions = interpreter.get_tensor(output_details[0]['index'])
-        predicted_class = np.argmax(predictions, axis=1)[0]
-        prediction_confidence = predictions[0][predicted_class]
+        prediction_probability = predictions[0][0]
+        predicted_class = 1 if prediction_probability > 0.5 else 0
+
+        # Calculate the confidence as the absolute distance from 0.5
+        confidence = abs(prediction_probability - 0.5) * 2
 
         return jsonify({
             'prediction': PREDICTION_MAPPING[predicted_class],  # Map prediction to class name
-            'confidence': float(prediction_confidence)
+            'confidence': float(confidence)
         })
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 400

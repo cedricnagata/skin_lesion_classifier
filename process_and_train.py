@@ -12,7 +12,7 @@ import numpy as np
 import os
 
 # Load the updated metadata with encoded labels and sample weights
-metadata_file_path = 'C:/Users/thece/Documents/Software Projects/DERM DX/data/updated_ground_truth_with_weights.csv'
+metadata_file_path = 'C:/Users/thece/Documents/Software Projects/DERM DX/data/metadata/updated_ground_truth_with_weights.csv'
 metadata = pd.read_csv(metadata_file_path)
 
 # Define image directory

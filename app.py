@@ -41,7 +41,9 @@ def predict():
     # Make predictions
     predictions = model.predict(img_array)
     diagnosis_pred = np.argmax(predictions[0], axis=1)[0]
+    diagnosis_confidence = predictions[0][0][diagnosis_pred]
     benign_malignant_pred = int(predictions[1][0] > 0.5)
+    benign_malignant_confidence = predictions[1][0] if benign_malignant_pred else 1 - predictions[1][0]
 
     # Map predictions to labels
     diagnosis = diagnosis_labels[diagnosis_pred]
@@ -53,8 +55,10 @@ def predict():
     # Return the predictions
     return jsonify({
         'diagnosis': diagnosis,
-        'benign_malignant': benign_malignant
+        'diagnosis_confidence': float(diagnosis_confidence),
+        'benign_malignant': benign_malignant,
+        'benign_malignant_confidence': float(benign_malignant_confidence)
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)

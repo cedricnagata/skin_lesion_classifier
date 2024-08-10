@@ -7,9 +7,11 @@ import os
 
 app = Flask(__name__)
 
-# Load the trained model
-model_path = './skin_lesion_model.keras'
-model = load_model(model_path)
+# Load the trained models
+diagnosis_model_path = 'diagnosis_model.h5'
+benign_malignant_model_path = 'benign_malignant_model.h5'
+diagnosis_model = load_model(diagnosis_model_path)
+benign_malignant_model = load_model(benign_malignant_model_path)
 
 # Define the labels
 diagnosis_labels = ['nevus', 'melanoma', 'other']
@@ -38,12 +40,17 @@ def predict():
     # Preprocess the image
     img_array = preprocess_image(temp_file_path)
 
-    # Make predictions
-    predictions = model.predict(img_array)
-    diagnosis_pred = np.argmax(predictions[0], axis=1)[0]
-    diagnosis_confidence = predictions[0][0][diagnosis_pred]
-    benign_malignant_pred = int(predictions[1][0] > 0.5)
-    benign_malignant_confidence = predictions[1][0] if benign_malignant_pred else 1 - predictions[1][0]
+    # Make predictions with each model
+    diagnosis_predictions = diagnosis_model.predict(img_array)
+    benign_malignant_predictions = benign_malignant_model.predict(img_array)
+
+    # Process diagnosis predictions
+    diagnosis_pred = np.argmax(diagnosis_predictions, axis=1)[0]
+    diagnosis_confidence = diagnosis_predictions[0][diagnosis_pred]
+
+    # Process benign/malignant predictions
+    benign_malignant_pred = int(benign_malignant_predictions[0] > 0.5)
+    benign_malignant_confidence = benign_malignant_predictions[0][0] if benign_malignant_pred else 1 - benign_malignant_predictions[0][0]
 
     # Map predictions to labels
     diagnosis = diagnosis_labels[diagnosis_pred]

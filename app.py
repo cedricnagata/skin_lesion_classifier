@@ -4,7 +4,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
-import psutil  # For memory tracking
 import gc
 
 app = Flask(__name__)
@@ -26,12 +25,6 @@ def preprocess_image(img_path):
     img_array /= 255.0
     return img_array
 
-def log_memory_usage(stage):
-    process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    peak_memory = memory_info.peak_wset if hasattr(memory_info, 'peak_wset') else memory_info.rss
-    print(f"[{stage}] Peak memory usage: {peak_memory / (1024 ** 2):.2f} MiB")
-
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
@@ -47,7 +40,6 @@ def predict():
 
     # Preprocess the image
     img_array = preprocess_image(temp_file_path)
-    log_memory_usage("After image preprocessing")
 
     # Load, predict, and unload diagnosis model
     diagnosis_model_path = 'diagnosis_model.h5'
@@ -55,7 +47,6 @@ def predict():
     diagnosis_predictions = diagnosis_model.predict(img_array)
     del diagnosis_model  # Unload the model to free up memory
     gc.collect()
-    log_memory_usage("After diagnosis model prediction")
 
     # Process diagnosis predictions
     diagnosis_pred = np.argmax(diagnosis_predictions, axis=1)[0]
@@ -67,7 +58,6 @@ def predict():
     benign_malignant_predictions = benign_malignant_model.predict(img_array)
     del benign_malignant_model  # Unload the model to free up memory
     gc.collect()
-    log_memory_usage("After benign/malignant model prediction")
 
     # Process benign/malignant predictions
     benign_malignant_pred = int(benign_malignant_predictions[0] > 0.5)
@@ -79,7 +69,6 @@ def predict():
 
     # Remove the temporary file
     os.remove(temp_file_path)
-    log_memory_usage("After removing temporary file")
 
     # Return the predictions
     return jsonify({

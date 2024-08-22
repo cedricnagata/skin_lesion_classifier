@@ -12,4 +12,6 @@ https://drive.google.com/drive/folders/1DB6v_0sp0e4SdPZhy5s0PfXhCKmpZJ7H?usp=sha
 - **Flask** for backend API (serving predictions)
 - **Google Colab** for computing environment
 
+
+### See DERMDX for mobile app demo: https://github.com/cedricnagata/derm_dx
 ---

@@ -1,14 +1,14 @@
 # Virtual environment
 /.venv
 
-# Image Processing
-/v1
-/v2
-
-# Models
-benign_malignant_model.h5
-diagnosis_model.h5
-
-# Test files
+# Backend
 test.jpg
 test_endpoint.py
+
+# v1
+/v1/models
+/v1/data
+/v1/h5_data.zip
+
+# v2
+/v2/data

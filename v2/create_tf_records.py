@@ -19,8 +19,8 @@ TEST_SPLIT = 0.15
 
 # Label maps
 binary_map = {
-    'benign': 0,
-    'malignant': 1
+    'Benign': 0,
+    'Malignant': 1
 }
 
 diagnosis_map = {
@@ -51,7 +51,7 @@ def write_tfrecord(df_subset, image_dir, output_path):
     count = 0
     with tf.io.TFRecordWriter(output_path) as writer:
         for idx, row in df_subset.iterrows():
-            image_path = os.path.join(image_dir, row['filename'])
+            image_path = os.path.join(image_dir, f"{row['isic_id']}.jpg")
             try:
                 image_data = tf.io.read_file(image_path)
                 example = serialize_example(
@@ -62,7 +62,7 @@ def write_tfrecord(df_subset, image_dir, output_path):
                 writer.write(example)
                 count += 1
             except Exception as e:
-                logging.warning(f"Skipping {row['filename']}: {e}")
+                logging.warning(f"Skipping {row['isic_id']}: {e}")
     logging.info(f"Wrote {count} records to {output_path}")
 
 def main(args):
@@ -72,14 +72,8 @@ def main(args):
     df = pd.read_csv(args.metadata_path)
     logging.info(f"Loaded metadata with {len(df)} rows.")
 
-    # Clean the data
-    logging.info("Cleaning data...")
-    # Remove rows with empty values in relevant columns
-    df = df.dropna(subset=['benign_malignant', 'diagnosis_3'])
-    logging.info(f"After removing rows with empty values: {len(df)} rows")
-
     # Check for unmapped values before mapping
-    unmapped_binary = set(df['benign_malignant'].unique()) - set(binary_map.keys())
+    unmapped_binary = set(df['diagnosis_1'].unique()) - set(binary_map.keys())
     unmapped_diagnosis = set(df['diagnosis_3'].unique()) - set(diagnosis_map.keys())
     
     if unmapped_binary or unmapped_diagnosis:
@@ -91,7 +85,7 @@ def main(args):
         raise ValueError(error_msg)
 
     logging.info("Mapping string labels to integers...")
-    df['binary_label'] = df['benign_malignant'].map(binary_map)
+    df['binary_label'] = df['diagnosis_1'].map(binary_map)
     df['diagnosis_label'] = df['diagnosis_3'].map(diagnosis_map)
 
     if df['binary_label'].isnull().any() or df['diagnosis_label'].isnull().any():

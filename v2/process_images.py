@@ -63,8 +63,8 @@ def crop_and_verify_images(input_folder, output_folder):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Crop images from 600x450 to 450x450')
-    parser.add_argument('input_folder', help='Path to the folder containing input images')
-    parser.add_argument('output_folder', help='Path to the folder where cropped images will be saved')
+    parser.add_argument('--image_dir', required=True, help='Path to the folder containing input images')
+    parser.add_argument('--output_dir', required=True, help='Path to the folder where cropped images will be saved')
     
     args = parser.parse_args()
     

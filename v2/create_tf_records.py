@@ -72,6 +72,24 @@ def main(args):
     df = pd.read_csv(args.metadata)
     logging.info(f"Loaded metadata with {len(df)} rows.")
 
+    # Clean the data
+    logging.info("Cleaning data...")
+    # Remove rows with empty values in relevant columns
+    df = df.dropna(subset=['benign_malignant', 'diagnosis_3'])
+    logging.info(f"After removing rows with empty values: {len(df)} rows")
+
+    # Check for unmapped values before mapping
+    unmapped_binary = set(df['benign_malignant'].unique()) - set(binary_map.keys())
+    unmapped_diagnosis = set(df['diagnosis_3'].unique()) - set(diagnosis_map.keys())
+    
+    if unmapped_binary or unmapped_diagnosis:
+        error_msg = "Found unmapped labels:\n"
+        if unmapped_binary:
+            error_msg += f"Binary labels not in map: {unmapped_binary}\n"
+        if unmapped_diagnosis:
+            error_msg += f"Diagnosis labels not in map: {unmapped_diagnosis}"
+        raise ValueError(error_msg)
+
     logging.info("Mapping string labels to integers...")
     df['binary_label'] = df['benign_malignant'].map(binary_map)
     df['diagnosis_label'] = df['diagnosis_3'].map(diagnosis_map)
@@ -109,7 +127,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert images and metadata to TFRecords with train/val/test split.")
     parser.add_argument('--image_dir', required=True, help='Path to image folder')
-    parser.add_argument('--metadata', required=True, help='Path to CSV metadata file')
+    parser.add_argument('--metadata_path', required=True, help='Path to CSV metadata file')
     parser.add_argument('--output_dir', required=True, help='Directory to save TFRecord files')
     args = parser.parse_args()
 

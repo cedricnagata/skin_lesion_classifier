@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--output_path', required=True, help='Path to save cleaned metadata CSV file')
     args = parser.parse_args()
 
-    analyze_metadata(args.input, args.output)
+    analyze_metadata(args.metadata_path, args.output_path)
 
 if __name__ == "__main__":
     main() 

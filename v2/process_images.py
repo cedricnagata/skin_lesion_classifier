@@ -69,8 +69,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Convert to absolute paths
-    input_folder = os.path.abspath(args.input_folder)
-    output_folder = os.path.abspath(args.output_folder)
+    input_folder = os.path.abspath(args.image_dir)
+    output_folder = os.path.abspath(args.output_dir)
     
     # Process images
     crop_and_verify_images(input_folder, output_folder) 

@@ -69,7 +69,7 @@ def main(args):
     os.makedirs(args.output_dir, exist_ok=True)
 
     logging.info("Loading metadata...")
-    df = pd.read_csv(args.metadata)
+    df = pd.read_csv(args.metadata_path)
     logging.info(f"Loaded metadata with {len(df)} rows.")
 
     # Clean the data

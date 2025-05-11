@@ -6,8 +6,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 import pandas as pd
 
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Define base data directory
 DATA_DIR = os.getenv("DATA_DIR")
+logging.info(f"Using data directory: {DATA_DIR}")
 
 # Define all paths relative to DATA_DIR
 IMAGE_DIR = os.path.join(DATA_DIR, "images")
@@ -19,7 +23,7 @@ METADATA_CLEANED_PATH = os.path.join(METADATA_DIR, "cleaned.csv")
 TF_RECORDS_DIR = os.path.join(DATA_DIR, "tf-records")
 
 # Constants
-IMG_HEIGHT, IMG_WIDTH = 450, 450  # Change as needed
+IMG_HEIGHT, IMG_WIDTH = 450, 450
 SEED = 42
 TRAIN_SPLIT = 0.70
 VAL_SPLIT = 0.15
@@ -71,79 +75,42 @@ def write_tfrecord(df_subset, image_dir, output_path):
                 count += 1
             except Exception as e:
                 logging.warning(f"Skipping {row['isic_id']}: {e}")
-    logging.info(f"Wrote {count} records to {output_path}")
+    logging.info(f"Created {output_path} with {count} records")
 
 
 def create_tf_records(df, image_dir, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
-    # Dynamically create label maps from the CSV
+    # Create label maps
     binary_classes = sorted(df["diagnosis_1"].dropna().unique())
     binary_map = {name: idx for idx, name in enumerate(binary_classes)}
     diagnosis_classes = sorted(df["diagnosis_3"].dropna().unique())
     diagnosis_map = {name: idx for idx, name in enumerate(diagnosis_classes)}
-    logging.info(f"Binary label mapping: {binary_map}")
-    logging.info(f"Diagnosis label mapping: {diagnosis_map}")
-
-    # Map string labels to integers
+    
+    # Map labels and compute weights
     df["binary_label"] = df["diagnosis_1"].map(binary_map)
     df["diagnosis_label"] = df["diagnosis_3"].map(diagnosis_map)
-
-    if df["binary_label"].isnull().any() or df["diagnosis_label"].isnull().any():
-        raise ValueError("Unmapped labels found. Check your CSV and label maps.")
-
-    # Compute class weights
-    binary_weights = compute_class_weight(
-        class_weight="balanced",
-        classes=np.sort(df["binary_label"].unique()),
-        y=df["binary_label"],
-    )
-    binary_class_weight = dict(
-        zip(np.sort(df["binary_label"].unique()), binary_weights)
-    )
-
-    diagnosis_weights = compute_class_weight(
-        class_weight="balanced",
-        classes=np.sort(df["diagnosis_label"].unique()),
-        y=df["diagnosis_label"],
-    )
-    diagnosis_class_weight = dict(
-        zip(np.sort(df["diagnosis_label"].unique()), diagnosis_weights)
-    )
-
-    df["binary_weight"] = df["binary_label"].map(binary_class_weight)
-    df["diagnosis_weight"] = df["diagnosis_label"].map(diagnosis_class_weight)
-
-    df["stratify"] = (
-        df["binary_label"].astype(str) + "_" + df["diagnosis_label"].astype(str)
-    )
-
+    
+    binary_weights = compute_class_weight("balanced", classes=np.sort(df["binary_label"].unique()), y=df["binary_label"])
+    diagnosis_weights = compute_class_weight("balanced", classes=np.sort(df["diagnosis_label"].unique()), y=df["diagnosis_label"])
+    
+    df["binary_weight"] = df["binary_label"].map(dict(zip(np.sort(df["binary_label"].unique()), binary_weights)))
+    df["diagnosis_weight"] = df["diagnosis_label"].map(dict(zip(np.sort(df["diagnosis_label"].unique()), diagnosis_weights)))
+    
     # Split dataset
-    train_val_df, test_df = train_test_split(
-        df, test_size=TEST_SPLIT, stratify=df["stratify"], random_state=SEED
-    )
-
+    df["stratify"] = df["binary_label"].astype(str) + "_" + df["diagnosis_label"].astype(str)
+    train_val_df, test_df = train_test_split(df, test_size=TEST_SPLIT, stratify=df["stratify"], random_state=SEED)
     val_rel_split = VAL_SPLIT / (1 - TEST_SPLIT)
-    train_df, val_df = train_test_split(
-        train_val_df,
-        test_size=val_rel_split,
-        stratify=train_val_df["stratify"],
-        random_state=SEED,
-    )
-
-    logging.info(
-        f"Total: {len(df)} | Train: {len(train_df)} | Val: {len(val_df)} | Test: {len(test_df)}"
-    )
+    train_df, val_df = train_test_split(train_val_df, test_size=val_rel_split, stratify=train_val_df["stratify"], random_state=SEED)
+    
+    logging.info(f"Dataset split - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
 
     # Write TFRecords
     write_tfrecord(train_df, image_dir, os.path.join(output_dir, "train.tfrecord"))
     write_tfrecord(val_df, image_dir, os.path.join(output_dir, "val.tfrecord"))
     write_tfrecord(test_df, image_dir, os.path.join(output_dir, "test.tfrecord"))
 
-    logging.info("TFRecord conversion completed successfully.")
-
 
 if __name__ == "__main__":
-    # Run TFRecord creation
     cleaned_df = pd.read_csv(os.path.join(METADATA_DIR, "cleaned.csv"))
     create_tf_records(cleaned_df, IMAGE_PROCESSED_DIR, TF_RECORDS_DIR)

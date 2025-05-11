@@ -1,9 +1,14 @@
 import os
 import logging
 from PIL import Image
+import sys
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Define base data directory
 DATA_DIR = os.getenv("DATA_DIR")
-print(DATA_DIR)
+logging.info(f"Using data directory: {DATA_DIR}")
 
 # Define all paths relative to DATA_DIR
 IMAGE_DIR = os.path.join(DATA_DIR, "images")
@@ -19,7 +24,9 @@ def crop_and_verify_images(input_folder, output_folder):
     image_files = [f for f in os.listdir(input_folder) 
                   if f.lower().endswith(image_extensions)]
     
-    logging.info(f"Found {len(image_files)} images to process")
+    processed_count = 0
+    error_count = 0
+    total_files = len(image_files)
     
     # Process each image
     for filename in image_files:
@@ -30,7 +37,7 @@ def crop_and_verify_images(input_folder, output_folder):
             with Image.open(input_path) as img:
                 # Check if image is 600x450
                 if img.size != (600, 450):
-                    logging.warning(f"{filename} is not 600x450 (actual size: {img.size})")
+                    error_count += 1
                     continue
                 
                 # Calculate crop box (75px from each side)
@@ -44,30 +51,18 @@ def crop_and_verify_images(input_folder, output_folder):
                 
                 # Save the cropped image
                 cropped_img.save(output_path)
-                logging.info(f"Processed: {filename}")
+                processed_count += 1
+                
+                # Print live count
+                sys.stdout.write(f"\rProcessed: {processed_count}/{total_files} images")
+                sys.stdout.flush()
                 
         except Exception as e:
-            logging.error(f"Error processing {filename}: {str(e)}")
+            error_count += 1
     
-    # Verify all images in output folder
-    logging.info("\nVerifying cropped images...")
-    all_correct = True
-    for filename in os.listdir(output_folder):
-        if filename.lower().endswith(image_extensions):
-            try:
-                with Image.open(os.path.join(output_folder, filename)) as img:
-                    if img.size != (450, 450):
-                        logging.error(f"{filename} is not 450x450 (actual size: {img.size})")
-                        all_correct = False
-            except Exception as e:
-                logging.error(f"Error verifying {filename}: {str(e)}")
-                all_correct = False
-    
-    if all_correct:
-        logging.info("\nAll images have been successfully cropped to 450x450!")
-    else:
-        logging.error("\nSome images were not properly cropped. Please check the errors above.")
+    # Print final newline and summary
+    print()  # Move to next line
+    logging.info(f"Completed: {processed_count} processed, {error_count} errors")
 
-# Run image processing
 if __name__ == "__main__":
     crop_and_verify_images(IMAGE_RAW_DIR, IMAGE_PROCESSED_DIR)

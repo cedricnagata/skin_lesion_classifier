@@ -20,29 +20,22 @@ def analyze_metadata(input_path, output_path):
     logging.info(f"Original metadata shape: {df.shape}")
 
     # Create new dataframe with only required columns
-    clean_df = df[['isic_id', 'diagnosis_1', 'diagnosis_3']].copy()
+    clean_df = df[['isic_id', 'diagnosis_2']].copy()
     
     # Remove rows with missing values
     clean_df = clean_df.dropna()
     logging.info(f"After cleaning: {clean_df.shape[0]} rows")
 
-    # Filter diagnosis_1 to only include 'Benign' and 'Malignant'
-    clean_df = clean_df[clean_df['diagnosis_1'].isin(['Benign', 'Malignant'])]
-    logging.info(f"After filtering: {clean_df.shape[0]} rows")
-
     # Filter out classes with only one sample
-    single_sample_classes = clean_df.groupby('diagnosis_3').filter(lambda x: len(x) == 1)['diagnosis_3'].unique()
+    single_sample_classes = clean_df.groupby('diagnosis_2').filter(lambda x: len(x) < 100)['diagnosis_2'].unique()
     if len(single_sample_classes) > 0:
-        clean_df = clean_df[~clean_df['diagnosis_3'].isin(single_sample_classes)]
+        clean_df = clean_df[~clean_df['diagnosis_2'].isin(single_sample_classes)]
         logging.info(f"After removing single-sample classes: {clean_df.shape[0]} rows")
 
     # Show class distributions from final cleaned data
     logging.info("\nFinal Class Distribution:")
-    logging.info("\nBinary Classification (diagnosis_1):")
-    logging.info(clean_df['diagnosis_1'].value_counts())
-    
-    logging.info("\nDetailed Diagnosis (diagnosis_3):")
-    logging.info(clean_df['diagnosis_3'].value_counts())
+    logging.info("\nDiagnosis Distribution (diagnosis_2):")
+    logging.info(clean_df['diagnosis_2'].value_counts())
 
     # Save the cleaned metadata
     clean_df.to_csv(output_path, index=False)

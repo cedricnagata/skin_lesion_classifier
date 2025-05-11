@@ -30,6 +30,20 @@ def analyze_metadata(input_path, output_path):
     clean_df = clean_df[clean_df['diagnosis_1'].isin(['Benign', 'Malignant'])]
     logging.info(f"After filtering: {clean_df.shape[0]} rows")
 
+    # Filter out classes with only one sample
+    single_sample_classes = clean_df.groupby('diagnosis_3').filter(lambda x: len(x) == 1)['diagnosis_3'].unique()
+    if len(single_sample_classes) > 0:
+        clean_df = clean_df[~clean_df['diagnosis_3'].isin(single_sample_classes)]
+        logging.info(f"After removing single-sample classes: {clean_df.shape[0]} rows")
+
+    # Show class distributions from final cleaned data
+    logging.info("\nFinal Class Distribution:")
+    logging.info("\nBinary Classification (diagnosis_1):")
+    logging.info(clean_df['diagnosis_1'].value_counts())
+    
+    logging.info("\nDetailed Diagnosis (diagnosis_3):")
+    logging.info(clean_df['diagnosis_3'].value_counts())
+
     # Save the cleaned metadata
     clean_df.to_csv(output_path, index=False)
     logging.info(f"Saved cleaned metadata to {output_path}")

@@ -19,32 +19,33 @@ def analyze_metadata(input_path, output_path):
     df = pd.read_csv(input_path)
     logging.info(f"Original metadata shape: {df.shape}")
 
-    # Create new dataframe with only required columns
-    clean_df = df[['isic_id', 'diagnosis_2']].copy()
+    # Use only 'isic_id' and 'diagnosis_1'
+    clean_df = df[['isic_id', 'diagnosis_1']].copy()
     
     # Remove rows with missing values
     clean_df = clean_df.dropna()
     logging.info(f"After cleaning: {clean_df.shape[0]} rows")
 
-    # Filter out classes with only one sample
-    single_sample_classes = clean_df.groupby('diagnosis_2').filter(lambda x: len(x) < 100)['diagnosis_2'].unique()
-    if len(single_sample_classes) > 0:
-        clean_df = clean_df[~clean_df['diagnosis_2'].isin(single_sample_classes)]
-        logging.info(f"After removing single-sample classes: {clean_df.shape[0]} rows")
+    # Filter to only 'Benign' and 'Malignant'
+    clean_df = clean_df[clean_df['diagnosis_1'].isin(['Benign', 'Malignant'])]
+    logging.info(f"After filtering for Benign and Malignant: {clean_df.shape[0]} rows")
+
+    # Balance the classes by downsampling 'Benign' to match 'Malignant'
+    benign_df = clean_df[clean_df['diagnosis_1'] == 'Benign']
+    malignant_df = clean_df[clean_df['diagnosis_1'] == 'Malignant']
+    n_malignant = len(malignant_df)
+    benign_sampled = benign_df.sample(n=n_malignant, random_state=42)
+    balanced_df = pd.concat([benign_sampled, malignant_df]).sample(frac=1, random_state=42).reset_index(drop=True)
+    logging.info(f"After balancing: {balanced_df.shape[0]} rows (Benign: {n_malignant}, Malignant: {n_malignant})")
 
     # Show class distributions from final cleaned data
     logging.info("\nFinal Class Distribution:")
-    diagnosis_classes = sorted(clean_df['diagnosis_2'].unique())
-    diagnosis_map = {name: idx for idx, name in enumerate(diagnosis_classes)}
-    class_counts = clean_df['diagnosis_2'].value_counts()
-    logging.info(f"{'Index':<6} {'Class Name':<30} {'Count':<6}")
-    for name in diagnosis_classes:
-        idx = diagnosis_map[name]
-        count = class_counts[name]
-        logging.info(f"{idx:<6} {name:<30} {count:<6}")
+    class_counts = balanced_df['diagnosis_1'].value_counts()
+    for name, count in class_counts.items():
+        logging.info(f"{name:<10} {count:<6}")
 
     # Save the cleaned metadata
-    clean_df.to_csv(output_path, index=False)
+    balanced_df.to_csv(output_path, index=False)
     logging.info(f"Saved cleaned metadata to {output_path}")
 
 if __name__ == "__main__":

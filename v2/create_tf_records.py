@@ -1,10 +1,8 @@
 import os
 import logging
 import tensorflow as tf
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.utils.class_weight import compute_class_weight
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,41 +12,25 @@ DATA_DIR = os.getenv("DATA_DIR")
 logging.info(f"Using data directory: {DATA_DIR}")
 
 # Define all paths relative to DATA_DIR
-IMAGE_DIR = os.path.join(DATA_DIR, "images")
-IMAGE_RAW_DIR = os.path.join(IMAGE_DIR, "raw")
-IMAGE_PROCESSED_DIR = os.path.join(IMAGE_DIR, "processed")
+IMAGE_PROCESSED_DIR = os.path.join(DATA_DIR, "images", "processed")
 METADATA_DIR = os.path.join(DATA_DIR, "metadata")
-METADATA_RAW_PATH = os.path.join(METADATA_DIR, "raw.csv")
-METADATA_CLEANED_PATH = os.path.join(METADATA_DIR, "cleaned.csv")
 TF_RECORDS_DIR = os.path.join(DATA_DIR, "tf-records")
 
-# Constants
-IMG_HEIGHT, IMG_WIDTH = 600, 600
 SEED = 42
 VAL_SPLIT = 0.20
-
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-
-def _float_feature(value):
-    return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
 
 def serialize_example(image_string, diagnosis_label):
     feature = {
         "image": _bytes_feature(image_string),
         "diagnosis_label": _int64_feature(diagnosis_label),
     }
-    return tf.train.Example(
-        features=tf.train.Features(feature=feature)
-    ).SerializeToString()
-
+    return tf.train.Example(features=tf.train.Features(feature=feature)).SerializeToString()
 
 def write_tfrecord(df_subset, image_dir, output_path):
     count = 0
@@ -67,17 +49,14 @@ def write_tfrecord(df_subset, image_dir, output_path):
                 logging.warning(f"Skipping {row['isic_id']}: {e}")
     logging.info(f"Created {output_path} with {count} records")
 
-
 def create_tf_records(df, image_dir, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create label map for diagnoses
-    diagnosis_classes = sorted(df["diagnosis_2"].dropna().unique())
-    diagnosis_map = {name: idx for idx, name in enumerate(diagnosis_classes)}
-    
-    # Map labels
-    df["diagnosis_label"] = df["diagnosis_2"].map(diagnosis_map)
-    
+    # Map 'Benign' to 0 and 'Malignant' to 1
+    label_map = {'Benign': 0, 'Malignant': 1}
+    df = df[df['diagnosis_1'].isin(label_map.keys())].copy()
+    df["diagnosis_label"] = df["diagnosis_1"].map(label_map)
+
     # Split dataset into train and val only
     train_df, val_df = train_test_split(
         df, 
@@ -85,13 +64,11 @@ def create_tf_records(df, image_dir, output_dir):
         stratify=df["diagnosis_label"], 
         random_state=SEED
     )
-    
     logging.info(f"Dataset split - Train: {len(train_df)}, Val: {len(val_df)}")
 
     # Write TFRecords
     write_tfrecord(train_df, image_dir, os.path.join(output_dir, "train.tfrecord"))
     write_tfrecord(val_df, image_dir, os.path.join(output_dir, "val.tfrecord"))
-
 
 if __name__ == "__main__":
     cleaned_df = pd.read_csv(os.path.join(METADATA_DIR, "cleaned.csv"))

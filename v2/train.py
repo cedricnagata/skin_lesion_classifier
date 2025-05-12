@@ -4,19 +4,7 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras import layers, models
 from tensorflow.keras import mixed_precision
-from sklearn.utils.class_weight import compute_class_weight
 
-
-# Define Custom Loss Classes
-class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
-    def __init__(self, name='weighted_sparse_categorical_crossentropy'):
-        super().__init__(name=name)
-
-    def call(self, y_true, y_pred, sample_weight=None):
-        if sample_weight is None:
-            return tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
-        return tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred) * sample_weight
-    
 
 # Load and Prepare Datasets
 def parse_tfrecord(example_proto):
@@ -24,11 +12,9 @@ def parse_tfrecord(example_proto):
         'image': tf.io.FixedLenFeature([], tf.string),
         'diagnosis_label': tf.io.FixedLenFeature([], tf.int64),
     }
-
     features = tf.io.parse_single_example(example_proto, feature_description)
     image = tf.image.decode_jpeg(features['image'], channels=3)
     image = tf.cast(image, tf.float32) / 255.0
-
     return image, features['diagnosis_label']
 
 def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
@@ -42,7 +28,7 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
     ).cache().shuffle(
         shuffle_size
     ).batch(
-        batch_size, drop_remainder=True
+        batch_size
     ).prefetch(
         tf.data.AUTOTUNE
     )
@@ -55,27 +41,18 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
         parse_tfrecord,
         num_parallel_calls=tf.data.AUTOTUNE
     ).batch(
-        batch_size, drop_remainder=True
+        batch_size
     ).prefetch(
         tf.data.AUTOTUNE
     )
 
     df = pd.read_csv(metadata_path)
-    num_diagnosis_classes = len(df['diagnosis_2'].unique())
+    num_diagnosis_classes = 2  # Benign and Malignant
     num_samples = len(df)
 
-    # Calculate class weights
-    y = df['diagnosis_2'].map({name: idx for idx, name in enumerate(sorted(df['diagnosis_2'].unique()))})
-    class_weights = compute_class_weight(
-        class_weight='balanced',
-        classes=np.unique(y),
-        y=y
-    )
-    class_weight_dict = {i: w for i, w in enumerate(class_weights)}
+    return train_dataset, val_dataset, num_diagnosis_classes, num_samples
 
-    return train_dataset, val_dataset, num_diagnosis_classes, num_samples, class_weight_dict
-
-def build_model(num_diagnosis_classes, img_height=600, img_width=600, base_trainable=False):
+def build_model(img_height=450, img_width=450, base_trainable=False):
     mixed_precision.set_global_policy('mixed_float16')
 
     data_augmentation = tf.keras.Sequential([
@@ -103,7 +80,7 @@ def build_model(num_diagnosis_classes, img_height=600, img_width=600, base_train
     x = layers.Dense(512, activation="relu")(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(0.5)(x)
-    outputs = layers.Dense(num_diagnosis_classes, activation="softmax", dtype="float32")(x)
+    outputs = layers.Dense(1, activation="sigmoid", dtype="float32")(x)
 
     model = models.Model(inputs, outputs, name="EfficientNetV2L_skin_lesion")
 
@@ -112,12 +89,12 @@ def build_model(num_diagnosis_classes, img_height=600, img_width=600, base_train
 
     model.compile(
         optimizer=optimizer,
-        loss=WeightedSparseCategoricalCrossentropy(),
-        metrics=["accuracy", tf.keras.metrics.SparseTopKCategoricalAccuracy(k=3, name="top_3_accuracy")]
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics=["accuracy", tf.keras.metrics.AUC(name="auc")]
     )
     return model
 
-def train_model(model, train_dataset, val_dataset, num_samples, batch_size, epochs, class_weight):
+def train_model(model, train_dataset, val_dataset, num_samples, batch_size, epochs):
     # Define callbacks
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
@@ -148,8 +125,7 @@ def train_model(model, train_dataset, val_dataset, num_samples, batch_size, epoc
         validation_data=val_dataset,
         epochs=epochs,
         steps_per_epoch=steps_per_epoch,
-        callbacks=callbacks,
-        class_weight=class_weight
+        callbacks=callbacks
     )    
 
     return model, history
@@ -161,7 +137,6 @@ def fine_tune_model(
         num_samples, 
         batch_size, 
         epochs, 
-        class_weight, 
         base_lr=1e-5, 
         base_trainable=True
     ):
@@ -171,9 +146,7 @@ def fine_tune_model(
     """
     # Load the model if a path is given
     if isinstance(model_or_path, str):
-        model = tf.keras.models.load_model(model_or_path, custom_objects={
-            'WeightedSparseCategoricalCrossentropy': WeightedSparseCategoricalCrossentropy
-        })
+        model = tf.keras.models.load_model(model_or_path)
     else:
         model = model_or_path
 
@@ -193,8 +166,8 @@ def fine_tune_model(
     optimizer = mixed_precision.LossScaleOptimizer(optimizer)
     model.compile(
         optimizer=optimizer,
-        loss=WeightedSparseCategoricalCrossentropy(),
-        metrics=["accuracy", tf.keras.metrics.SparseTopKCategoricalAccuracy(k=3, name="top_3_accuracy")]
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics=["accuracy", tf.keras.metrics.AUC(name="auc")]
     )
 
     # Define callbacks (shorter patience for fine-tuning)
@@ -227,8 +200,7 @@ def fine_tune_model(
         validation_data=val_dataset,
         epochs=epochs,
         steps_per_epoch=steps_per_epoch,
-        callbacks=callbacks,
-        class_weight=class_weight
+        callbacks=callbacks
     )
 
     return model, history

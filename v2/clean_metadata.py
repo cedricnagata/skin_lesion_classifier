@@ -34,8 +34,14 @@ def analyze_metadata(input_path, output_path):
 
     # Show class distributions from final cleaned data
     logging.info("\nFinal Class Distribution:")
-    logging.info("\nDiagnosis Distribution (diagnosis_2):")
-    logging.info(clean_df['diagnosis_2'].value_counts())
+    diagnosis_classes = sorted(clean_df['diagnosis_2'].unique())
+    diagnosis_map = {name: idx for idx, name in enumerate(diagnosis_classes)}
+    class_counts = clean_df['diagnosis_2'].value_counts()
+    logging.info(f"{'Index':<6} {'Class Name':<30} {'Count':<6}")
+    for name in diagnosis_classes:
+        idx = diagnosis_map[name]
+        count = class_counts[name]
+        logging.info(f"{idx:<6} {name:<30} {count:<6}")
 
     # Save the cleaned metadata
     clean_df.to_csv(output_path, index=False)

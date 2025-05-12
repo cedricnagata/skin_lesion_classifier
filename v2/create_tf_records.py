@@ -25,9 +25,7 @@ TF_RECORDS_DIR = os.path.join(DATA_DIR, "tf-records")
 # Constants
 IMG_HEIGHT, IMG_WIDTH = 1024, 1024
 SEED = 42
-TRAIN_SPLIT = 0.70
-VAL_SPLIT = 0.15
-TEST_SPLIT = 0.15
+VAL_SPLIT = 0.20
 
 
 def _bytes_feature(value):
@@ -42,11 +40,10 @@ def _float_feature(value):
     return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
 
-def serialize_example(image_string, diagnosis_label, diagnosis_weight):
+def serialize_example(image_string, diagnosis_label):
     feature = {
         "image": _bytes_feature(image_string),
         "diagnosis_label": _int64_feature(diagnosis_label),
-        "diagnosis_weight": _float_feature(diagnosis_weight),
     }
     return tf.train.Example(
         features=tf.train.Features(feature=feature)
@@ -63,7 +60,6 @@ def write_tfrecord(df_subset, image_dir, output_path):
                 example = serialize_example(
                     image_data.numpy(),
                     int(row["diagnosis_label"]),
-                    float(row["diagnosis_weight"]),
                 )
                 writer.write(example)
                 count += 1
@@ -79,40 +75,22 @@ def create_tf_records(df, image_dir, output_dir):
     diagnosis_classes = sorted(df["diagnosis_2"].dropna().unique())
     diagnosis_map = {name: idx for idx, name in enumerate(diagnosis_classes)}
     
-    # Map labels and compute weights
+    # Map labels
     df["diagnosis_label"] = df["diagnosis_2"].map(diagnosis_map)
     
-    diagnosis_weights = compute_class_weight(
-        "balanced", 
-        classes=np.sort(df["diagnosis_label"].unique()), 
-        y=df["diagnosis_label"]
-    )
-    
-    df["diagnosis_weight"] = df["diagnosis_label"].map(
-        dict(zip(np.sort(df["diagnosis_label"].unique()), diagnosis_weights))
-    )
-    
-    # Split dataset
-    train_val_df, test_df = train_test_split(
+    # Split dataset into train and val only
+    train_df, val_df = train_test_split(
         df, 
-        test_size=TEST_SPLIT, 
+        test_size=VAL_SPLIT, 
         stratify=df["diagnosis_label"], 
         random_state=SEED
     )
-    val_rel_split = VAL_SPLIT / (1 - TEST_SPLIT)
-    train_df, val_df = train_test_split(
-        train_val_df, 
-        test_size=val_rel_split, 
-        stratify=train_val_df["diagnosis_label"], 
-        random_state=SEED
-    )
     
-    logging.info(f"Dataset split - Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
+    logging.info(f"Dataset split - Train: {len(train_df)}, Val: {len(val_df)}")
 
     # Write TFRecords
     write_tfrecord(train_df, image_dir, os.path.join(output_dir, "train.tfrecord"))
     write_tfrecord(val_df, image_dir, os.path.join(output_dir, "val.tfrecord"))
-    write_tfrecord(test_df, image_dir, os.path.join(output_dir, "test.tfrecord"))
 
 
 if __name__ == "__main__":

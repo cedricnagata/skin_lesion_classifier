@@ -39,9 +39,7 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
     ).map(
         parse_tfrecord,
         num_parallel_calls=tf.data.AUTOTUNE
-    ).cache(
-        '/content/tf_cache'
-    ).shuffle(
+    ).cache().shuffle(
         shuffle_size
     ).batch(
         batch_size, drop_remainder=True
@@ -77,7 +75,7 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
 
     return train_dataset, val_dataset, num_diagnosis_classes, num_samples, class_weight_dict
 
-def build_model(num_diagnosis_classes, img_height=1024, img_width=1024, base_trainable=False):
+def build_model(num_diagnosis_classes, img_height=600, img_width=600, base_trainable=False):
     mixed_precision.set_global_policy('mixed_float16')
 
     data_augmentation = tf.keras.Sequential([
@@ -163,7 +161,7 @@ def train_model(model, train_dataset, val_dataset, num_samples, model_dir, batch
     return model, history
 
 def fine_tune_model(
-        model_path, 
+        model_or_path, 
         train_dataset, 
         val_dataset, 
         num_samples, 
@@ -176,11 +174,15 @@ def fine_tune_model(
     ):
     """
     Fine-tune a previously trained model by unfreezing the base model and training with a lower learning rate.
+    Accepts either a model object or a path to a saved model.
     """
-    # Load the model
-    model = tf.keras.models.load_model(model_path, custom_objects={
-        'WeightedSparseCategoricalCrossentropy': WeightedSparseCategoricalCrossentropy
-    })
+    # Load the model if a path is given
+    if isinstance(model_or_path, str):
+        model = tf.keras.models.load_model(model_or_path, custom_objects={
+            'WeightedSparseCategoricalCrossentropy': WeightedSparseCategoricalCrossentropy
+        })
+    else:
+        model = model_or_path
 
     # Unfreeze the base model
     base_model = None

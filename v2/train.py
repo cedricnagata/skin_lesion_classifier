@@ -159,3 +159,84 @@ def train_model(model, train_dataset, val_dataset, num_samples, model_dir, batch
     )    
 
     return model, history
+
+def fine_tune_model(
+        model_path, 
+        train_dataset, 
+        val_dataset, 
+        num_samples, 
+        model_dir, 
+        batch_size, 
+        epochs, 
+        class_weight, 
+        base_lr=1e-5, 
+        base_trainable=True
+    ):
+    """
+    Fine-tune a previously trained model by unfreezing the base model and training with a lower learning rate.
+    """
+    # Load the model
+    model = tf.keras.models.load_model(model_path, custom_objects={
+        'WeightedSparseCategoricalCrossentropy': WeightedSparseCategoricalCrossentropy
+    })
+
+    # Unfreeze the base model
+    base_model = None
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.Model) and 'efficientnet' in layer.name.lower():
+            base_model = layer
+            break
+    if base_model is not None:
+        base_model.trainable = base_trainable
+    else:
+        print("Warning: Could not find base model to unfreeze.")
+
+    # Re-compile with a lower learning rate
+    optimizer = tf.keras.optimizers.AdamW(learning_rate=base_lr, weight_decay=1e-4)
+    optimizer = mixed_precision.LossScaleOptimizer(optimizer)
+    model.compile(
+        optimizer=optimizer,
+        loss=WeightedSparseCategoricalCrossentropy(),
+        metrics=["accuracy", tf.keras.metrics.SparseTopKCategoricalAccuracy(k=3, name="top_3_accuracy")]
+    )
+
+    # Define callbacks (shorter patience for fine-tuning)
+    callbacks = [
+        tf.keras.callbacks.ModelCheckpoint(
+            os.path.join(model_dir, 'finetuned_model.keras'),
+            monitor='val_loss',
+            save_best_only=True,
+            mode='min'
+        ),
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=5,
+            restore_best_weights=True
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=2,
+            verbose=1,
+            min_lr=1e-7
+        ),
+        tf.keras.callbacks.TensorBoard(
+            log_dir=os.path.join(model_dir, 'logs_finetune'),
+            histogram_freq=1,
+            profile_batch='500,520'
+        )
+    ]
+
+    steps_per_epoch = num_samples // batch_size
+
+    # Fine-tune
+    history = model.fit(
+        train_dataset,
+        validation_data=val_dataset,
+        epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
+        callbacks=callbacks,
+        class_weight=class_weight
+    )
+
+    return model, history

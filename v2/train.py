@@ -121,7 +121,7 @@ def train_model(model, train_dataset, val_dataset, num_samples, batch_size, epoc
     # Define callbacks
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            os.path.join('/tmp/', 'best_model_base.keras'),
+            os.path.join('/models/base/', 'best_model_base.keras'),
             monitor='val_loss',
             save_best_only=True,
             mode='min'
@@ -200,7 +200,7 @@ def fine_tune_model(
     # Define callbacks (shorter patience for fine-tuning)
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            os.path.join('/tmp/', 'best_model_tuned.keras'),
+            os.path.join('/models/tuned/', 'best_model_tuned.keras'),
             monitor='val_loss',
             save_best_only=True,
             mode='min'

@@ -117,11 +117,11 @@ def build_model(num_diagnosis_classes, img_height=600, img_width=600, base_train
     )
     return model
 
-def train_model(model, train_dataset, val_dataset, num_samples, model_dir, batch_size, epochs, class_weight):
+def train_model(model, train_dataset, val_dataset, num_samples, batch_size, epochs, class_weight):
     # Define callbacks
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            os.path.join(model_dir, 'best_model.keras'),
+            os.path.join('/tmp/', 'best_model_base.keras'),
             monitor='val_loss',
             save_best_only=True,
             mode='min'
@@ -137,12 +137,6 @@ def train_model(model, train_dataset, val_dataset, num_samples, model_dir, batch
             patience=3,
             verbose=1,
             min_lr=1e-6
-        ),
-        # Add TensorBoard callback
-        tf.keras.callbacks.TensorBoard(
-            log_dir=os.path.join(model_dir, 'logs'),
-            histogram_freq=1,
-            profile_batch='500,520'
         )
     ]
 
@@ -165,7 +159,6 @@ def fine_tune_model(
         train_dataset, 
         val_dataset, 
         num_samples, 
-        model_dir, 
         batch_size, 
         epochs, 
         class_weight, 
@@ -207,7 +200,7 @@ def fine_tune_model(
     # Define callbacks (shorter patience for fine-tuning)
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            os.path.join(model_dir, 'finetuned_model.keras'),
+            os.path.join('/tmp/', 'best_model_tuned.keras'),
             monitor='val_loss',
             save_best_only=True,
             mode='min'
@@ -223,11 +216,6 @@ def fine_tune_model(
             patience=2,
             verbose=1,
             min_lr=1e-7
-        ),
-        tf.keras.callbacks.TensorBoard(
-            log_dir=os.path.join(model_dir, 'logs_finetune'),
-            histogram_freq=1,
-            profile_batch='500,520'
         )
     ]
 

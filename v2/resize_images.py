@@ -37,6 +37,22 @@ def resize_images(input_folder, output_folder, target_size):
     print()
     logging.info(f"Completed: {processed_count} processed, {error_count} errors")
 
+    # Verification step: check all output images are the correct size
+    wrong_size = []
+    for filename in os.listdir(output_folder):
+        if filename.lower().endswith(image_extensions):
+            output_path = os.path.join(output_folder, filename)
+            try:
+                with Image.open(output_path) as img:
+                    if img.size != (target_size, target_size):
+                        wrong_size.append(filename)
+            except Exception as e:
+                logging.error(f"Error verifying {filename}: {str(e)}")
+    if wrong_size:
+        logging.warning(f"{len(wrong_size)} images are not the correct size ({target_size}x{target_size}): {wrong_size}")
+    else:
+        logging.info(f"All images in {output_folder} are the correct size: {target_size}x{target_size}")
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Resize all images in DATA_DIR/images/raw to a square size and save to DATA_DIR/images/processed.")

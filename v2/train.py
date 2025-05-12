@@ -39,6 +39,8 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
     ).map(
         parse_tfrecord,
         num_parallel_calls=tf.data.AUTOTUNE
+    ).cache(
+        '/content/tf_cache'
     ).shuffle(
         shuffle_size
     ).batch(

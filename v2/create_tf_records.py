@@ -23,7 +23,7 @@ METADATA_CLEANED_PATH = os.path.join(METADATA_DIR, "cleaned.csv")
 TF_RECORDS_DIR = os.path.join(DATA_DIR, "tf-records")
 
 # Constants
-IMG_HEIGHT, IMG_WIDTH = 1024, 1024
+IMG_HEIGHT, IMG_WIDTH = 600, 600
 SEED = 42
 VAL_SPLIT = 0.20
 

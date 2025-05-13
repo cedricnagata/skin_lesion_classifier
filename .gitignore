@@ -13,3 +13,6 @@ test_endpoint.py
 
 # v2
 /v2/data
+
+# v3
+/v3/data

@@ -47,25 +47,15 @@ def create_datasets(tf_records_dir, metadata_path, batch_size, shuffle_size):
     )
 
     df = pd.read_csv(metadata_path)
-    num_diagnosis_classes = 2  # Benign and Malignant
     num_samples = len(df)
 
-    return train_dataset, val_dataset, num_diagnosis_classes, num_samples
+    return train_dataset, val_dataset, num_samples
 
 def build_model(img_height=450, img_width=450, base_trainable=False):
     mixed_precision.set_global_policy('mixed_float16')
 
-    data_augmentation = tf.keras.Sequential([
-        layers.RandomFlip("horizontal_and_vertical"),
-        layers.RandomRotation(0.2),
-        layers.RandomZoom(0.2),
-        layers.RandomContrast(0.2),
-        layers.RandomBrightness(0.2),
-    ], name="data_augmentation")
-
     inputs = layers.Input(shape=(img_height, img_width, 3), name="input_image")
-    x = data_augmentation(inputs)
-    x = layers.Rescaling(1.0/255)(x)
+    x = layers.Rescaling(1.0/255)(inputs)
 
     base_model = tf.keras.applications.EfficientNetV2L(
         include_top=False,

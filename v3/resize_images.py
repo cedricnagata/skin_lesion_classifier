@@ -65,7 +65,7 @@ def main():
         return
 
     input_dir = os.path.join(DATA_DIR, "images", "raw")
-    output_dir = os.path.join(DATA_DIR, "images", "processed")
+    output_dir = os.path.join(DATA_DIR, "images", "resized")
 
     logging.info(f"Resizing images in {input_dir} to {args.size}x{args.size} and saving to {output_dir}")
     resize_images(input_dir, output_dir, args.size)

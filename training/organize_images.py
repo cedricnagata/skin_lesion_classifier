@@ -51,7 +51,7 @@ def main():
         raise ValueError("DATA_DIR environment variable is not set")
         
     # Define paths
-    metadata_path = os.path.join(DATA_DIR, "metadata", "raw.csv")
+    metadata_path = os.path.join(DATA_DIR, "metadata.csv")
     image_dir = os.path.join(DATA_DIR, "images", "resized")
     output_dir = os.path.join(DATA_DIR, "images", "processed")
     

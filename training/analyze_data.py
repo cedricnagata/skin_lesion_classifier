@@ -34,7 +34,7 @@ def main():
 
     # Define paths
     image_dir = os.path.join(DATA_DIR, "images", "raw")
-    csv_path = os.path.join(DATA_DIR, "metadata", "raw.csv")
+    csv_path = os.path.join(DATA_DIR, "metadata.csv")
     
     print("Analyzing image sizes...")
     sizes, total_images = analyze_image_sizes(image_dir)

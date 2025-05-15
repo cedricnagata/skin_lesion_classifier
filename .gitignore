@@ -6,13 +6,5 @@
 test.jpg
 test_endpoint.py
 
-# v1
-/v1/models
-/v1/data
-/v1/h5_data.zip
-
-# v2
-/v2/data
-
-# v3
-/v3/data
+# data
+data/

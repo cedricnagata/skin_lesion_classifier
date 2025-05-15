@@ -1,7 +1,0 @@
-services:
-  skin-lesion-classifier:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - FLASK_ENV=production 

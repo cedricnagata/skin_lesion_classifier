@@ -52,8 +52,8 @@ def main():
         
     # Define paths
     metadata_path = os.path.join(DATA_DIR, "metadata.csv")
-    image_dir = os.path.join(DATA_DIR, "images", "resized")
-    output_dir = os.path.join(DATA_DIR, "images", "processed")
+    image_dir = os.path.join(DATA_DIR, "images", "raw_images")
+    output_dir = os.path.join(DATA_DIR, "images", "organized_images")
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)

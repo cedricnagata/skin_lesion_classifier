@@ -33,7 +33,7 @@ def main():
     DATA_DIR = os.getenv("DATA_DIR")
 
     # Define paths
-    image_dir = os.path.join(DATA_DIR, "images", "raw")
+    image_dir = os.path.join(DATA_DIR, "images", "raw_images")
     csv_path = os.path.join(DATA_DIR, "metadata.csv")
     
     print("Analyzing image sizes...")

@@ -2,9 +2,7 @@
 /.venv
 .env
 
-# Backend
-test.jpg
-test_endpoint.py
-
-# data
+# data/models
 training/data
+testing
+models

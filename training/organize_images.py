@@ -46,9 +46,7 @@ def organize_images(metadata_path, image_dir, output_dir):
     print(f"Malignant images: {malignant_count}")
 
 def main():
-    DATA_DIR = os.getenv("DATA_DIR")
-    if not DATA_DIR:
-        raise ValueError("DATA_DIR environment variable is not set")
+    DATA_DIR = "data/2019"
         
     # Define paths
     metadata_path = os.path.join(DATA_DIR, "metadata.csv")

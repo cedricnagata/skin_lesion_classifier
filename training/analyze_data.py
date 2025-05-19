@@ -30,7 +30,7 @@ def analyze_class_distribution(csv_path):
     return class_distribution
 
 def main():
-    DATA_DIR = os.getenv("DATA_DIR")
+    DATA_DIR = "data/2019"
 
     # Define paths
     image_dir = os.path.join(DATA_DIR, "images", "raw_images")

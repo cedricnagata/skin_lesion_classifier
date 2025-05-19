@@ -1,8 +1,5 @@
-# Virtual environment
 /.venv
-.env
 
-# data/models
-training/data
-testing
-models
+/training/data
+/testing
+/models

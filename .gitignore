@@ -1,5 +1,5 @@
 /.venv
 
-/training/data
+/training
 /testing
-/models
+/skin_lesion_classifier_85.keras

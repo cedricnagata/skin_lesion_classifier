@@ -1,25 +1,22 @@
 from flask import Flask, request, jsonify
 import tensorflow as tf
-from tensorflow import keras
 import numpy as np
 from PIL import Image
 import io
-import os
-import traceback
 
 
 app = Flask(__name__)
 
-# Check if model file exists
-model_path = 'models/skin_lesion_classifier_85.keras'
+# Get model path from environment variable
+MODEL_PATH = "skin_lesion_classifier_85.keras"
 
 # Load the model
 try:
-    model = tf.keras.models.load_model(model_path)
+    print(f"Loading model...")
+    model = tf.keras.models.load_model(MODEL_PATH)
     print("Model loaded successfully")
 except Exception as e:
     print(f"Error loading model: {str(e)}")
-    traceback.print_exc()
     model = None
 
 def preprocess_image(image_bytes):
@@ -65,8 +62,7 @@ def predict():
     
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True) 
+    app.run(host='0.0.0.0', port=8000) 

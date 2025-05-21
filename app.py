@@ -1,30 +1,51 @@
 import modal
 
 app = modal.App("skin-lesion-classifier")
-
 image = (
     modal.Image.debian_slim()
-    .pip_install_from_requirements("requirements.txt")
-    .add_local_file("skin_lesion_classifier_85.keras", "models/skin_lesion_classifier_85.keras")
+    .pip_install("flask", "tensorflow", "keras", "numpy", "pillow")
 )
+volume = modal.Volume.from_name("models")
+VOL_DIR = "/models"
 
-
-@app.function(image=image)
+@app.function(image=image, volumes={"/models": volume})
 @modal.concurrent(max_inputs=100)
 @modal.wsgi_app()
 def flask_app():
-    from flask import Flask, jsonify
+    from flask import Flask, request, jsonify
     import tensorflow as tf
+    import keras
+    from keras import layers, applications, Model, optimizers
     import numpy as np
     from PIL import Image
     import io
 
     app = Flask(__name__)
 
+    IMG_SIZE = 384
+
     # Load the model
     try:
         print(f"Loading model...")
-        model = tf.keras.models.load_model("models/skin_lesion_classifier_85.keras")
+
+        inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+        model = applications.EfficientNetV2L(include_top=False, input_tensor=inputs)
+        model.trainable = False
+        # Rebuild top
+        x = layers.GlobalAveragePooling2D(name="avg_pool")(model.output)
+        x = layers.BatchNormalization()(x)
+        top_dropout_rate = 0.2
+        x = layers.Dropout(top_dropout_rate, name="top_dropout")(x)
+        outputs = layers.Dense(1, activation="sigmoid", name="pred")(x)
+        # Compile
+        model = Model(inputs, outputs, name="EfficientNet")
+        model.compile(
+            optimizer=optimizers.Adam(learning_rate=1e-2),
+            loss="binary_crossentropy",
+            metrics=["accuracy", tf.keras.metrics.AUC(name="auc")]
+        )
+
+        model.load_weights(f"{VOL_DIR}/slc_85.weights.h5")
         print("Model loaded successfully")
     except Exception as e:
         print(f"Error loading model: {str(e)}")
@@ -46,13 +67,8 @@ def flask_app():
         return img_array
 
     @app.post("/predict")
-    def predict(image_file: bytes):
-        if model is None:
-            return jsonify({"error": "Model not loaded"}), 500
-
-        if image_file is None:
-            return jsonify({"error": "No image provided"}), 400
-
+    def predict():
+        image_file = request.get_data()
         try:
             # Preprocess the image
             processed_image = preprocess_image(image_file)

@@ -68,7 +68,10 @@ def flask_app():
 
     @app.post("/predict")
     def predict():
-        image_file = request.get_data()
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+            
+        image_file = request.files['image'].read()
         try:
             # Preprocess the image
             processed_image = preprocess_image(image_file)

@@ -51,19 +51,15 @@ def flask_app():
         print(f"Error loading model: {str(e)}")
         model = None
 
-    def preprocess_image(image_bytes):
-        img = Image.open(io.BytesIO(image_bytes))
-
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-
-        if img.size != (384, 384):
-            print(f"Resizing image from {img.size} to (384, 384)")
-            img = img.resize((384, 384), resample=Image.Resampling.BICUBIC)
-
-        img_array = np.array(img) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
-
+    def preprocess_image(image_file):
+        img_bytes = io.BytesIO(image_file)
+        img = tf.keras.utils.load_img(
+            img_bytes,
+            target_size=(IMG_SIZE, IMG_SIZE),
+            interpolation="bicubic"
+        )
+        img_array = tf.keras.utils.img_to_array(img)
+        img_array = tf.expand_dims(img_array, 0)
         return img_array
 
     @app.post("/predict")
